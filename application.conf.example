@@ -1,0 +1,32 @@
+# Database configuration
+db {
+  # JDBC URL for the database connection
+  jdbcUrl = "jdbc:postgresql://localhost:5432/your_database"
+
+  # Database username and password
+  dbUser = "your_user"
+  dbPassword = "your_password"
+
+  driverClassName = "org.postgresql.Driver"
+
+  hikari {
+    maximumPoolSize = 3
+    transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+  }
+}
+
+ktor {
+  deployment {
+    # Port where Ktor application will run
+    port = 8080
+    # Host for Ktor application
+    host = "0.0.0.0"
+  }
+
+  # Application settings like environment and logging
+  application {
+    modules = [ "com.example.ApplicationKt.module" ]
+  }
+}
+
+
