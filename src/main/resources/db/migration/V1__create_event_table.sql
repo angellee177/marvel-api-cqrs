@@ -1,4 +1,4 @@
-CREATE TABLE events (
+CREATE TABLE Events (
     id UUID PRIMARY KEY NOT NULL,                               -- Unique identifier for the event
     stream_id UUID,                                            -- Identifier for the event stream
     causation_id UUID,                                         -- Identifier for the event that caused this event
