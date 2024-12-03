@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package auths;
+
+// Service definition
+service AuthService {
+  rpc Register (RegisterRequest) returns (RegisterResponse);
+  rpc Login (LoginRequest) returns (LoginResponse);
+  rpc GetProfile (ProfileRequest) returns (ProfileResponse);
+}
+
+// Request and response messages for the Register method
+message RegisterRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message RegisterResponse {
+  string message = 1;
+}
+
+// Request and response messages for the Login method
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+}
+
+// Request and response messages for the GetProfile method
+message ProfileRequest {
+  string token = 1;
+}
+
+message ProfileResponse {
+  string name = 1;
+  string email = 2;
+}
