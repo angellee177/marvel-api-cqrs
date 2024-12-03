@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.service.auth.AuthService
 import com.example.service.userProfile.ProfileService
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -18,7 +19,11 @@ fun Application.module(isTest: Boolean = false) {
     DatabaseFactory.init()
 
     // Start the gRPC server
-    startGrpcServer(ProfileService(), isTest)
+    startGrpcServer(
+        AuthService(ProfileService()),
+        ProfileService(),
+        isTest
+    )
 
     // Ktor Routing for REST (if needed)
     configureRouting()

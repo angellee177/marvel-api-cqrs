@@ -3,23 +3,20 @@ package com.example.grpc
 import auths.AuthServiceGrpc
 import auths.Authentication.*
 import com.example.models.Login
-import com.example.models.ProfileType
 import com.example.models.Register
-import com.example.service.userProfile.ProfileService
-import com.example.utils.JWT
+import com.example.service.auth.AuthService
+import io.grpc.Status
+import io.grpc.netty.shaded.io.netty.handler.codec.http.HttpHeaderValidationUtil.validateToken
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 class AuthServiceImpl(
-    private val profileService: ProfileService,
-    private val jwt: JWT = JWT
+    private val authService: AuthService
 ) : AuthServiceGrpc.AuthServiceImplBase() {
-
     private val logger: Logger = LoggerFactory.getLogger(AuthServiceImpl::class.java)
 
     override fun register(
@@ -30,14 +27,7 @@ class AuthServiceImpl(
             try {
                 logger.info("Received gRPC Register request for email: ${request.email}")
                 val register = Register(request.name, request.email, request.password)
-
-                // Registration logic
-                val hashedPassword = BCrypt.hashpw(register.password, BCrypt.gensalt())
-                profileService.registerProfile(
-                    register.name,
-                    register.email,
-                    hashedPassword
-                )
+                authService.register(register)
 
                 val response = RegisterResponse.newBuilder()
                     .setMessage("Registration Successful!")
@@ -64,17 +54,7 @@ class AuthServiceImpl(
             try {
                 logger.info("Received gRPC Login request for email: ${request.email}")
                 val login = Login(request.email, request.password)
-
-                // Login logic
-                val profile = profileService.getProfileByEmail(login.email)
-                    ?: throw IllegalArgumentException("Invalid Credentials")
-
-                if (!BCrypt.checkpw(login.password, profile.password)) {
-                    logger.warn("Invalid password for email: ${login.email}")
-                    throw IllegalArgumentException("Invalid Credentials")
-                }
-
-                val token = jwt.createJwtToken(profile.email)
+                val token = authService.login(login)
 
                 val response = LoginResponse.newBuilder()
                     .setToken(token)
@@ -100,13 +80,7 @@ class AuthServiceImpl(
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 logger.info("Received gRPC GetProfile request")
-
-                // Get profile logic
-                val email = jwt.verifyTokenAndGetEmail(request.token)
-                    ?: throw IllegalArgumentException("Invalid token: Unable to extract email")
-
-                val profile: ProfileType = profileService.getProfileByEmail(email)
-                    ?: throw IllegalArgumentException("Profile not found for email: $email")
+                val profile = authService.getProfileByToken(request.token)
 
                 val response = ProfileResponse.newBuilder()
                     .setName(profile.name)
