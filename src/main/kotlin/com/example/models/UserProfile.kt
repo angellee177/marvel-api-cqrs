@@ -1,13 +1,11 @@
 package com.example.models
 
-import com.google.protobuf.timestamp
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
-import java.sql.Timestamp
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 object ProfileUser : Table() {
     val id: Column<UUID> = uuid("id").autoGenerate()

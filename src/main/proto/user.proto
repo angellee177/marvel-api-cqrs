@@ -6,11 +6,13 @@ package users;
 // Define the gRPC service
 service UserService {
   // Get all users
-  rpc GetAllUsers (Empty) returns (UserList);
+  rpc GetAllUsers (GetAllUsersRequest) returns (UserList);
 }
 
-// Message for an empty request
-message Empty {}
+// Message for a request with token
+message GetAllUsersRequest {
+  string token = 1;  // Add token to the request
+}
 
 // Message for a user
 message User {
