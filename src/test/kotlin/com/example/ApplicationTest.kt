@@ -10,7 +10,7 @@ class ApplicationTest {
     @Test
     fun testRoot() = testApplication {
         application {
-            module()
+            module(isTest = true) // Pass isTest = true to skip gRPC server startup
         }
         client.get("/").apply {
             assertEquals(HttpStatusCode.OK, status)

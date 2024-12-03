@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+// Package name
+package users;
+
+// Define the gRPC service
+service UserService {
+  // Get all users
+  rpc GetAllUsers (Empty) returns (UserList);
+}
+
+// Message for an empty request
+message Empty {}
+
+// Message for a user
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+// Message for a list of users
+message UserList {
+  repeated User users = 1;
+}
