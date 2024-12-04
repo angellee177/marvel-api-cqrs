@@ -36,4 +36,4 @@ out/
 .vscode/
 
 # ignore application configuration
-application.conf
+!**/src/main/resources/application.conf
