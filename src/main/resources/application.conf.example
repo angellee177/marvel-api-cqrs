@@ -29,4 +29,15 @@ ktor {
   }
 }
 
+jwt {
+    issuer = "http://0.0.0.0:8080/"
+    audience = "jwt-audience"
+    realm = "ktor sample app"
+    secret = "your_jwt_secret_key"
+}
 
+marvelApi {
+    publicApiKey = "your_public_api_key",
+    privateApiKey = "your_private_api_key"
+    baseUrl="https://gateway.marvel.com"
+}
