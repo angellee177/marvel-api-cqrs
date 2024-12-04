@@ -12,3 +12,7 @@ fun Instant.toTimestamp(): Timestamp = Timestamp.newBuilder()
     .setSeconds(epochSecond)
     .setNanos(nano)
     .build()
+
+// Convert String directly to gRPC Timestamp
+fun String.toGrpcTimestamp(): Timestamp = this.toInstant().toTimestamp()
+
