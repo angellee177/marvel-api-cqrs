@@ -1,5 +1,6 @@
 package com.example.models
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
@@ -17,6 +18,7 @@ object ProfileUser : Table() {
 
 @Serializable
 data class ProfileType(
+    @Contextual
     val id: UUID,
     val name: String,
     val email: String,

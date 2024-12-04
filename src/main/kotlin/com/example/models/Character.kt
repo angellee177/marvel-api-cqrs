@@ -1,6 +1,9 @@
 package com.example.models
 
+import com.example.lib.UUIDSerializer
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
@@ -17,10 +20,10 @@ object Characters : Table() {
 }
 
 @Serializable
-data class CharacterData(
+data class CharacterDBData(
+    @Contextual // Apply custom serializer here
     val id: UUID,
     val marveId: String,
     val name: String,
     val description: String,
-    val lastModified: Instant,
 )

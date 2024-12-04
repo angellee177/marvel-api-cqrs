@@ -3,6 +3,7 @@ import com.google.protobuf.gradle.id
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.0"
     id("com.google.protobuf") version "0.9.3" // Plugin for protobuf
 }
 
@@ -30,6 +31,7 @@ dependencies {
     implementation(libs.ktor.server.netty) // Netty engine for running the Ktor server
     implementation(libs.logback.classic) // Logging with Logback
     implementation(Libraries.logging) // CallLogging feature
+    implementation(Libraries.ktorOkHttp)
 
     // Testing dependencies
     testImplementation(libs.ktor.server.test.host) // Testing utilities for Ktor applications
@@ -43,6 +45,7 @@ dependencies {
 
     // Kotlin core + standard requirements
     implementation(Libraries.kotlinBom) // Kotlin BOM for dependency alignment
+    implementation(Libraries.serialization)
 
     // Exposed ORM dependencies
     implementation(Libraries.exposedCore) // Core DSL for building queries
@@ -69,6 +72,8 @@ dependencies {
 object Versions {
     const val kotlin = "2.0.0"
     const val logging = "2.0.0"
+    const val ktorOkHttp = "3.0.0"
+    const val serialization = "1.7.3"
 
     const val sqlDelight = "2.0.1"
 
@@ -112,6 +117,8 @@ object Libraries {
     // Kotlin core + standard requirements
     const val kotlinBom = "org.jetbrains.kotlin:kotlin-bom:${v.kotlin}" // Kotlin BOM for dependency alignment
     const val logging = "io.ktor:ktor-server-call-logging:${v.logging}"
+    const val ktorOkHttp = "io.ktor:ktor-client-okhttp:${v.ktorOkHttp}"
+    const val serialization = "org.jetbrains.kotlinx:kotlinx-serialization-json:${v.serialization}"
 
     // gRPC dependencies
     const val grpcKotlinStub = "io.grpc:grpc-kotlin-stub:${v.grpcKotlinStub}" // Kotlin gRPC support
@@ -150,7 +157,9 @@ protobuf {
     }
 }
 
-
+tasks.test {
+    useJUnitPlatform()
+}
 
 
 
