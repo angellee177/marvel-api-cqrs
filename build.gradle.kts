@@ -60,6 +60,14 @@ dependencies {
     implementation(Libraries.grpcProtoBuf) // gRPC protobuf support
     implementation(Libraries.grpcStub) // Basic gRPC stubs
 
+    // Testing purpose
+    implementation(Libraries.kotestRunner)
+    implementation(Libraries.kotestAssertion)
+    implementation(Libraries.kotestProperty)
+    implementation(Libraries.coroutineTest)
+    implementation(Libraries.jUnit)
+    implementation(Libraries.jUnitEngine)
+
     // Protocol Buffers
     implementation(Libraries.protoBufKotlin)
 
@@ -88,6 +96,11 @@ object Versions {
     const val koin = "4.0.0"
     const val dateTime = "0.6.1"
     const val bcrypt = "0.4"
+
+    // Testing purpose
+    const val kotest = "5.9.0"
+    const val jUnit = "5.11.3"
+    const val coroutineTest = "1.9.0"
 
     // gRPC connection
     const val grpcKotlinStub = "1.4.1"
@@ -131,6 +144,18 @@ object Libraries {
     const val bcrypt = "org.mindrot:jbcrypt:${v.bcrypt}"
 
     const val koin = "io.insert-koin:koin-core:${v.koin}"
+
+    // Kotest dependencies for testing
+    const val kotestRunner = "io.kotest:kotest-runner-junit5:${v.kotest}"
+    const val kotestAssertion = "io.kotest:kotest-assertions-core:${v.kotest}"
+    const val kotestProperty = "io.kotest:kotest-property:${v.kotest}"
+
+    // Coroutine Test dependencies
+    const val coroutineTest = "org.jetbrains.kotlinx:kotlinx-coroutines-test:${v.coroutineTest}"
+
+    // Other necessary dependencies
+    const val jUnit = "org.junit.jupiter:junit-jupiter-api:${v.jUnit}"
+    const val jUnitEngine = "org.junit.jupiter:junit-jupiter-engine:${v.jUnit}"
 }
 
 protobuf {
