@@ -1,7 +1,10 @@
 package com.example
 
 import com.example.service.auth.AuthService
+import com.example.service.cache.CacheService
+import com.example.service.character.CharacterService
 import com.example.service.userProfile.ProfileService
+import com.example.thirdparty.MarvelApiClient
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
@@ -22,6 +25,10 @@ fun Application.module(isTest: Boolean = false) {
     startGrpcServer(
         AuthService(ProfileService()),
         ProfileService(),
+        CharacterService(
+            CacheService(),
+            MarvelApiClient(),
+        ),
         isTest
     )
 

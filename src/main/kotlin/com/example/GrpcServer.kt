@@ -1,6 +1,8 @@
 import com.example.grpc.AuthServiceImpl
+import com.example.grpc.CharacterServiceImpl
 import com.example.grpc.UserServiceImpl
 import com.example.service.auth.AuthService
+import com.example.service.character.CharacterService
 import com.example.service.userProfile.ProfileService
 import io.grpc.ServerBuilder
 import kotlinx.io.IOException
@@ -9,6 +11,7 @@ import org.slf4j.LoggerFactory
 fun startGrpcServer(
     authService: AuthService,
     profileService: ProfileService,
+    characterService: CharacterService,
     isTest: Boolean = false
 ) {
     val logger = LoggerFactory.getLogger("GrpcServerLogger")
@@ -22,6 +25,9 @@ fun startGrpcServer(
             AuthServiceImpl(authService)
         )
         .addService(UserServiceImpl(profileService))
+        .addService(
+            CharacterServiceImpl(characterService)
+        )
         .build()
 
     try {

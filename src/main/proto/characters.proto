@@ -5,33 +5,31 @@ package characters;
 // Importing the standard timestamp type
 import "google/protobuf/timestamp.proto";
 
-// Character message definition
-message Character {
-  string id = 1;                          // UUID of the character
-  string marvel_id = 2;                   // Marvel API ID
-  string name = 3;                        // Character name
-  string description = 4;                 // Character description
-  google.protobuf.Timestamp last_modified = 5;  // Last modified timestamp
-  google.protobuf.Timestamp updated_at = 6;     // Last updated timestamp
-}
-
-// Character list response for batch queries
-message CharacterList {
-  repeated Character characters = 1;     // List of characters
-}
-
-// Request to get or query characters
-message GetCharactersRequest {
-  string query = 1;                      // Optional search query for name or description
-}
-
-// Response with a list of characters
-message GetCharactersResponse {
-  CharacterList data = 1;                // The list of characters
-}
-
 // Service definition for Character operations
 service CharacterService {
   // Fetch a list of characters
-  rpc GetCharacters(GetCharactersRequest) returns (GetCharactersResponse);
+  rpc FetchCharacters(FetchCharactersRequest) returns (CharacterList);
+}
+
+// Request for fetching characters
+message FetchCharactersRequest {
+  // Optional filters
+  string name = 1;
+  string nameStartsWith = 2;
+  string modifiedSince = 3; // String format, e.g., "2024-12-05T00:00:00Z"
+  int32 offset = 4; // Default 0
+  int32 limit = 5;  // Default 5
+}
+
+// Individual character data
+message Character {
+  string marvelId = 1;
+  string name = 2;
+  string description = 3;
+  string lastModified = 4;  // String format, e.g., "2024-12-05T00:00:00Z"
+}
+
+// Response containing a list of characters
+message CharacterList {
+  repeated Character characters = 1;
 }
