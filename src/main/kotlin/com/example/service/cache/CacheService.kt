@@ -1,16 +1,15 @@
 package com.example.service.cache
 
 import com.example.models.CacheCharacters
-import com.example.models.CacheEntry
 import com.example.models.CharacterDBData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Instant
-import java.util.UUID
 
 class CacheService {
 
@@ -18,87 +17,83 @@ class CacheService {
     private val logger: Logger = LoggerFactory.getLogger(CacheService::class.java)
 
     /**
-     * Check if the same query is cached for a user.
-     * @param characterId The character's UUID to check in the cache.
-     * @return CacheEntry if the query is cached and valid, or null if not.
+     * Generate a unique cache key from query parameters.
      */
-    fun checkUserCache(characterId: UUID): CacheEntry? {
-        logger.info("Checking cache for character ID: $characterId")
-        return transaction {
-            val cacheEntry = CacheCharacters
-                .selectAll()
-                .where { CacheCharacters.characterId eq characterId }
-                .orderBy(CacheCharacters.updatedAt, SortOrder.DESC)
-                .limit(1)
-                .singleOrNull()
+    fun generateCacheKey(params: Map<String, String?>): String {
+        return params.entries
+            .filter { it.value != null }
+            .sortedBy { it.key }
+            .joinToString("&") { "${it.key}=${it.value}" }
+    }
 
-            if (cacheEntry != null) {
-                val expiresAt = cacheEntry[CacheCharacters.expiresAt]
-                if (expiresAt.isAfter(Instant.now())) {
-                    logger.info("Cache hit for character ID: $characterId, expires at: $expiresAt")
-                    toCacheEntry(cacheEntry)
-                } else {
-                    logger.warn("Cache expired for character ID: $characterId, expired at: $expiresAt")
-                    null // Cache expired
-                }
-            } else {
-                logger.info("Cache miss for character ID: $characterId")
-                null // Cache not found
-            }
+    /**
+     * Fetch all matching cache entries based on query parameters.
+     * @param queryParams Map of query parameters to filter cache entries.
+     * @return List of matching CacheEntry objects.
+     */
+    fun fetchMatchingCacheEntries(queryParams: Map<String, String?>): List<CharacterDBData> {
+        logger.info("Fetching matching cache entries for query parameters: $queryParams")
+        val conditions = buildConditions(queryParams)
+
+        return transaction {
+            CacheCharacters.selectAll()
+                .where { conditions and (CacheCharacters.expiresAt greaterEq Instant.now()) }
+                .orderBy(CacheCharacters.updatedAt, SortOrder.DESC)
+                .map { toCacheEntry(it) }
+        }.also { results ->
+            logger.info("Found ${results.size} matching cache entries for query.")
         }
     }
 
     /**
-     * Cache a character's data in the cache table.
+     * Build SQL conditions dynamically based on query parameters.
      */
-    fun cacheCharacterData(characterId: UUID, characterData: CharacterDBData) {
-        logger.info("Caching data for character ID: $characterId")
-        val dataJson = json.encodeToString(characterData)
+    private fun buildConditions(queryParams: Map<String, String?>): Op<Boolean> {
+        var conditions: Op<Boolean> = Op.TRUE
+        queryParams.forEach { (key, value) ->
+            if (!value.isNullOrEmpty()) {
+                when (key) {
+                    "name" -> conditions = conditions and (CacheCharacters.cacheKey like "%\"name\":\"$value\"%")
+                    "nameStartsWith" -> conditions =
+                        conditions and (CacheCharacters.cacheKey like "%\"name\":\"$value%")
 
+                    "modifiedSince" -> {
+                        // lastModified search query from user will be Date type
+                        val modifiedSinceInstant = Instant.parse(value)
+
+                        // Check `modified` field embedded in JSON stored in cacheKey column
+                        conditions = conditions and (
+                                CacheCharacters.data like "%\"lastModified\":\"$modifiedSinceInstant\"%")
+                    }
+                }
+            }
+        }
+        return conditions
+    }
+
+    /**
+     * Cache list of characters data in the cache table.
+     */
+    fun cacheCharacterData(cacheKey: String, characters: List<CharacterDBData>) {
+        logger.info("Caching data for cacheKey: $cacheKey")
+        val dataJson = json.encodeToString(characters)
         val expiresAt = Instant.now().plusSeconds(24 * 60 * 60) // 24 hours from now
-        logger.debug("Calculated expiration time for character ID $characterId: $expiresAt")
 
         transaction {
-            // Check if the character is already in the cache
-            val existingEntry = CacheCharacters
-                .selectAll()
-                .where { CacheCharacters.characterId eq characterId }
-                .limit(1)
-                .singleOrNull()
-
-            if (existingEntry == null) {
-                logger.info("No existing cache entry for character ID: $characterId. Inserting new entry.")
-                CacheCharacters.insert {
-                    it[this.characterId] = characterId
-                    it[this.data] = dataJson
-                    it[this.createdAt] = Instant.now()
-                    it[this.updatedAt] = Instant.now()
-                    it[this.expiresAt] = expiresAt
-                }
-                logger.debug("Inserted cache entry for character ID: $characterId")
-            } else {
-                logger.info("Existing cache entry found for character ID: $characterId. Updating entry.")
-                CacheCharacters.update({ CacheCharacters.characterId eq characterId }) {
-                    it[this.data] = dataJson
-                    it[this.updatedAt] = Instant.now()
-                    it[this.expiresAt] = expiresAt
-                }
-                logger.debug("Updated cache entry for character ID: $characterId")
+            CacheCharacters.insert {
+                it[this.data] = dataJson
+                it[this.createdAt] = Instant.now()
+                it[this.updatedAt] = Instant.now()
+                it[this.expiresAt] = expiresAt
             }
+        }.also {
+            logger.debug("Cached data for cacheKey: $cacheKey")
         }
     }
 
     /**
      * Helper function to map a ResultRow to a CacheEntry data class.
      */
-    private fun toCacheEntry(row: ResultRow): CacheEntry {
-        logger.debug("Mapping database row to CacheEntry object for character ID: ${row[CacheCharacters.characterId]}")
-        return CacheEntry(
-            id = row[CacheCharacters.id],
-            characterId = row[CacheCharacters.characterId],
-            data = row[CacheCharacters.data]
-        ).also {
-            logger.debug("Mapped CacheEntry: $it")
-        }
-    }
+    private fun toCacheEntry(row: ResultRow): CharacterDBData =
+        CharacterDBData.fromJson(row[CacheCharacters.data])
 }
