@@ -1,14 +1,14 @@
 package com.example.models
 
-import com.example.lib.UUIDSerializer
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.javatime.timestamp
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 object Characters : Table() {
     val id: Column<UUID> = uuid("id").autoGenerate()
@@ -21,9 +21,21 @@ object Characters : Table() {
 
 @Serializable
 data class CharacterDBData(
-    @Contextual // Apply custom serializer here
-    val id: UUID,
-    val marveId: String,
+    val marvelId: String,
     val name: String,
     val description: String,
-)
+    @Contextual
+    val lastModified: Instant,
+) {
+    // Convert Character object to JSON string
+    fun toJson(): String {
+        return Json.encodeToString(this)
+    }
+
+    // Deserialize JSON string into a Character object
+    companion object {
+        fun fromJson(json: String): CharacterDBData {
+            return Json.decodeFromString<CharacterDBData>(json)
+        }
+    }
+}
