@@ -90,10 +90,8 @@ object Versions {
     const val bcrypt = "0.4"
 
     // gRPC connection
-    const val grpcKotlinStub = "1.4.0"
-    const val grpcNettyShaded = "1.57.2"
-    const val grpcProtobuf = "1.57.2"
-    const val grpcStub = "1.57.2"
+    const val grpcKotlinStub = "1.4.1"
+    const val grpc = "1.68.2"
 
     const val protobufKotlin = "3.24.3"
 }
@@ -122,9 +120,9 @@ object Libraries {
 
     // gRPC dependencies
     const val grpcKotlinStub = "io.grpc:grpc-kotlin-stub:${v.grpcKotlinStub}" // Kotlin gRPC support
-    const val grpcNettyShaded = "io.grpc:grpc-netty-shaded:${v.grpcNettyShaded}" // Netty-based gRPC server
-    const val grpcProtoBuf = "io.grpc:grpc-protobuf:${v.grpcProtobuf}" // gRPC protobuf support
-    const val grpcStub = "io.grpc:grpc-stub:${v.grpcStub}" // Basic gRPC stubs
+    const val grpcNettyShaded = "io.grpc:grpc-netty-shaded:${v.grpc}" // Netty-based gRPC server
+    const val grpcProtoBuf = "io.grpc:grpc-protobuf:${v.grpc}" // gRPC protobuf support
+    const val grpcStub = "io.grpc:grpc-stub:${v.grpc}" // Basic gRPC stubs
 
     // Protocol Buffers
     const val protoBufKotlin = "com.google.protobuf:protobuf-kotlin:${v.protobufKotlin}"
