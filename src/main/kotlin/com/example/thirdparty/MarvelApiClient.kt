@@ -11,8 +11,6 @@ import io.ktor.server.config.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import java.security.MessageDigest
@@ -49,7 +47,7 @@ class MarvelApiClient {
      * @param queryParams Optional map of query parameters to filter characters
      * @return MarvelData object or null if the request fails
      */
-    suspend fun fetchCharacters(queryParams: Map<String, String>? = null): MarvelData? {
+    suspend fun fetchCharacters(queryParams: Map<String, String>? = null): MarvelData {
         return withContext(Dispatchers.IO) {
             retry(times = 3, initialDelay = 1_000) {
                 try {
@@ -62,19 +60,22 @@ class MarvelApiClient {
                     logger.debug("Fetching characters from Marvel API. URL: $url")
 
                     if (response.status == HttpStatusCode.OK) {
+                        val rawResponse = response.bodyAsText()
+
                         val json = Json { ignoreUnknownKeys = true }
-                        val apiResponse: MarvelApiResponse = json.decodeFromString(response.bodyAsText())
-                        logger.debug("Response received and successfully deserialized.")
+                        val apiResponse: MarvelApiResponse = json.decodeFromString(rawResponse)
+                        logger.debug("Response received and successfully deserialized. apiResponse: $apiResponse")
+
                         // Pass the deserialized object to transformToMarvelData
                         return@retry transformToMarvelData(apiResponse)
                     } else {
                         val errorBody = response.bodyAsText()
                         logger.error("Failed to fetch characters. Status: ${response.status}, Error: $errorBody")
-                        null
+                        emptyMarvelData
                     }
                 } catch (e: Exception) {
                     logger.error("Error fetching data from Marvel API: ${e.message}", e)
-                    null
+                    emptyMarvelData
                 }
             }
         }
@@ -86,12 +87,12 @@ class MarvelApiClient {
      * @param apiResponse Deserialized MarvelApiResponse object
      * @return MarvelData object or null
      */
-    private fun transformToMarvelData(apiResponse: MarvelApiResponse): MarvelData? {
+    private fun transformToMarvelData(apiResponse: MarvelApiResponse): MarvelData {
         val data = apiResponse.data
 
         if (data.total == 0 && data.results.isEmpty()) {
             logger.warn("No characters found in the API response.")
-            return null
+            return emptyMarvelData
         }
 
         return MarvelData(
@@ -148,4 +149,10 @@ class MarvelApiClient {
         }
         return block()
     }
+
+    val emptyMarvelData = MarvelData(
+        limit = 0,
+        total = 0,
+        results = emptyList(),
+    )
 }
