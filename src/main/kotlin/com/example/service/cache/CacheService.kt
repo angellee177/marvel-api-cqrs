@@ -1,19 +1,24 @@
 package com.example.service.cache
 
+import com.example.lib.JsonConfig
 import com.example.models.CacheCharacters
 import com.example.models.CharacterDBData
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 class CacheService {
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val logger: Logger = LoggerFactory.getLogger(CacheService::class.java)
 
     /**
@@ -21,7 +26,7 @@ class CacheService {
      */
     fun generateCacheKey(params: Map<String, String?>): String {
         return params.entries
-            .filter { it.value != null }
+            .filter { !it.value.isNullOrEmpty() } // Exclude null or empty parameters
             .sortedBy { it.key }
             .joinToString("&") { "${it.key}=${it.value}" }
     }
@@ -33,15 +38,35 @@ class CacheService {
      */
     fun fetchMatchingCacheEntries(queryParams: Map<String, String?>): List<CharacterDBData> {
         logger.info("Fetching matching cache entries for query parameters: $queryParams")
-        val conditions = buildConditions(queryParams)
 
-        return transaction {
-            CacheCharacters.selectAll()
-                .where { conditions and (CacheCharacters.expiresAt greaterEq Instant.now()) }
-                .orderBy(CacheCharacters.updatedAt, SortOrder.DESC)
-                .map { toCacheEntry(it) }
-        }.also { results ->
-            logger.info("Found ${results.size} matching cache entries for query.")
+        // Parse limit and offset from queryParams
+        val limit = queryParams["limit"]?.toIntOrNull() ?: 5
+        val offset = queryParams["offset"]?.toIntOrNull() ?: 0
+
+        // Build SQL conditions
+        val conditions = buildConditions(queryParams)
+        logger.info("Successfully built conditions: $conditions")
+
+        return try {
+            // Execute the query inside a transaction
+            transaction {
+                CacheCharacters
+                    .select(CacheCharacters.data) // Select only the 'data' column
+                    .where {
+                        conditions and
+                                (CacheCharacters.expiresAt greaterEq Instant.now()) // Check for expiration
+                    }
+                    .orderBy(CacheCharacters.updatedAt, SortOrder.DESC)
+                    .limit(limit)
+                    .offset(offset.toLong())
+                    .map { toCacheEntry(it) }
+                    .flatten()// Convert rows to CacheEntry objects
+            }.also { results ->
+                logger.info("Found ${results.size} matching cache entries for query.")
+            }
+        } catch (e: Exception) {
+            logger.error("Error fetching matching cache entries: ${e.message}", e)
+            throw e // Rethrow the exception
         }
     }
 
@@ -50,24 +75,49 @@ class CacheService {
      */
     private fun buildConditions(queryParams: Map<String, String?>): Op<Boolean> {
         var conditions: Op<Boolean> = Op.TRUE
+
         queryParams.forEach { (key, value) ->
             if (!value.isNullOrEmpty()) {
                 when (key) {
-                    "name" -> conditions = conditions and (CacheCharacters.cacheKey like "%\"name\":\"$value\"%")
-                    "nameStartsWith" -> conditions =
-                        conditions and (CacheCharacters.cacheKey like "%\"name\":\"$value%")
-
+                    "name" -> {
+                        conditions = conditions and (CacheCharacters.cacheKey like "%name=$value%")
+                    }
+                    "nameStartsWith" -> {
+                        conditions = conditions and (CacheCharacters.cacheKey like "%name=$value%")
+                    }
                     "modifiedSince" -> {
-                        // lastModified search query from user will be Date type
-                        val modifiedSinceInstant = Instant.parse(value)
-
-                        // Check `modified` field embedded in JSON stored in cacheKey column
-                        conditions = conditions and (
-                                CacheCharacters.data like "%\"lastModified\":\"$modifiedSinceInstant\"%")
+                        // Handle the JSON array in the 'data' column
+                        val jsonCondition = object : Op<Boolean>() {
+                            override fun toQueryBuilder(queryBuilder: QueryBuilder) {
+                                queryBuilder.append(
+                                    "EXISTS (SELECT 1 FROM jsonb_array_elements(",
+                                    CacheCharacters.data,
+                                    ") AS item WHERE item->>'lastModified' >= ",
+                                    QueryParameter(value, TextColumnType()),
+                                    ")"
+                                )
+                            }
+                        }
+//                        val jsonCondition = CustomFunction(
+//                            functionName = "EXISTS",
+//                            columnType = BooleanColumnType(),
+//                            LiteralOp(TextColumnType(), """
+//                                SELECT 1 FROM jsonb_array_elements(${CacheCharacters.data.name}) AS item WHERE item->>'lastModified' >= '$value'
+//                                """.trimIndent()
+//                            )
+//                        )
+                        conditions = conditions and jsonCondition
+                    }
+                    "limit" -> {
+                        conditions = conditions and (CacheCharacters.cacheKey like "%limit=$value%")
+                    }
+                    "offset" -> {
+                        conditions = conditions and (CacheCharacters.cacheKey like "%offset=$value%")
                     }
                 }
             }
         }
+
         return conditions
     }
 
@@ -76,14 +126,23 @@ class CacheService {
      */
     fun cacheCharacterData(cacheKey: String, characters: List<CharacterDBData>) {
         logger.info("Caching data for cacheKey: $cacheKey")
-        val dataJson = json.encodeToString(characters)
+
+        if (characters.isEmpty()) {
+            return
+        }
+
+        logger.info("ListCharacters: $characters")
+        val dataJson = JsonConfig.json.encodeToString(characters)
+
+        logger.info("Successfully encodeToString: $dataJson")
         val expiresAt = Instant.now().plusSeconds(24 * 60 * 60) // 24 hours from now
 
         transaction {
+            logger.info("Start storing cache: $dataJson, with cacheKey: $cacheKey")
+
             CacheCharacters.insert {
-                it[this.data] = dataJson
-                it[this.createdAt] = Instant.now()
-                it[this.updatedAt] = Instant.now()
+                it[this.cacheKey] = cacheKey
+                it[this.data] = characters
                 it[this.expiresAt] = expiresAt
             }
         }.also {
@@ -94,6 +153,30 @@ class CacheService {
     /**
      * Helper function to map a ResultRow to a CacheEntry data class.
      */
-    private fun toCacheEntry(row: ResultRow): CharacterDBData =
-        CharacterDBData.fromJson(row[CacheCharacters.data])
+    private fun toCacheEntry(row: ResultRow): List<CharacterDBData> = row[CacheCharacters.data]
+
+    /**
+     * Parse 'modifiedSince' value to Instant, handling full datetime, datetime without colon in timezone, and date-only formats.
+     */
+    fun parseModifiedSince(value: String): Instant {
+        return when {
+            value.matches(Regex("""\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{4}""")) -> {
+                // Handle datetime with timezone offset without colon (e.g., 2024-09-24T11:11:31-0400)
+                val formattedValue = value.substring(0, 22) + ":" + value.substring(22) // Add colon to timezone offset
+                OffsetDateTime.parse(formattedValue, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant()
+            }
+
+            value.matches(Regex("""\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}""")) -> {
+                // Handle standard ISO-8601 datetime with colon in timezone offset
+                OffsetDateTime.parse(value, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant()
+            }
+
+            value.matches(Regex("""\d{4}-\d{2}-\d{2}""")) -> {
+                // Handle date-only format (e.g., 2023-04-05)
+                LocalDate.parse(value, DateTimeFormatter.ISO_DATE).atStartOfDay(ZoneOffset.UTC).toInstant()
+            }
+
+            else -> throw IllegalArgumentException("Invalid format for 'modifiedSince': $value")
+        }
+    }
 }
