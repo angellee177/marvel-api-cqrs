@@ -29,6 +29,7 @@ class CharacterService(
         logger.info("Fetching Characters is starting")
 
         val cacheKey = cacheService.generateCacheKey(queryParams)
+        logger.info("Successfully generate cacheKey: $cacheKey")
 
         try {
             // Parse limit and offset from queryParams
@@ -37,11 +38,11 @@ class CharacterService(
 
             // Check cache first
             logger.info("Checking from cache")
-            val cachedData: List<CharacterDBData> = cacheService.fetchMatchingCacheEntries(queryParams)
+            val cachedData: List<CharacterDBData> = transaction {
+                cacheService.fetchMatchingCacheEntries(queryParams)
+            }
             if (cachedData.isNotEmpty()) {
                 logger.info("Returning cached data for query key: $cacheKey")
-
-                // return the cache data
                 return@withContext pagination(cachedData, limit, offset)
             }
 
@@ -54,20 +55,27 @@ class CharacterService(
                 return@withContext emptyList()
             }
 
-            // Process and save characters in batches
-            val characters: List<CharacterDBData> = processAndSaveCharactersInBatches(freshData.results)
+            logger.info("Successfully fetch from Marvel Api, total characters: ${freshData.results}")
+
+            // Save characters to DB if they do not exist
+            transaction {
+                saveCharactersToDb(freshData.results)
+            }
+
+            // Format characters into CharacterDBData
+            val formattedCharacters: List<CharacterDBData> = formatCharacters(freshData.results)
 
             // Cache processed data
             coroutineScope {
                 launch {
-                    cacheService.cacheCharacterData(cacheKey, characters)
+                    cacheService.cacheCharacterData(cacheKey, formattedCharacters)
                 }
             }
 
             logger.info("Successfully fetched and cached data for query key: $cacheKey")
 
             // return the characters
-            return@withContext pagination(characters, limit, offset)
+            return@withContext pagination(formattedCharacters, limit, offset)
         } catch (e: Exception) {
             logger.error("Error handling character request: ${e.message}", e)
             throw Error("Failed to fetch characters: ${e.message}")
@@ -77,54 +85,63 @@ class CharacterService(
     /**
      * Processes and saves characters in batches to handle large data sets efficiently.
      */
-    private fun processAndSaveCharactersInBatches(
+    private fun saveCharactersToDb(
         results: List<MarvelCharacter>,
-    ): List<CharacterDBData> {
-        val characters = mutableListOf<CharacterDBData>()
-
+    ) {
         transaction {
             // Process the results one by one
             results.forEach { result ->
                 val description = result.description ?: ""
                 val lastModified = result.modified.toInstant()
+                logger.info("try to convert lastModified: $lastModified")
 
-                // Create CharacterDBData instance
-                val characterDBData = CharacterDBData(
-                    marvelId = result.id.toString(),
-                    name = result.name,
-                    description = description,
-                    lastModified = result.modified,
-                )
-
-                logger.info("Checking if character with name: ${characterDBData.name} exists.")
+                logger.info("Checking if character with name: ${result.name} exists.")
 
                 // Check if the character already exists based on the unique 'name'
                 val existingCharacter = Characters
                     .selectAll()
-                    .where { Characters.name eq  characterDBData.name }
+                    .where { Characters.name eq  result.name }
                     .singleOrNull()
 
                 // If the character does not exist, insert it
                 if (existingCharacter == null) {
-                    logger.info("Saving new character: ${characterDBData.name} with Marvel ID: ${characterDBData.marvelId}")
+                    logger.info("Saving new character: ${result.name} with Marvel ID: ${result.id}")
 
                     // Insert a single character at a time
                     Characters.insert {
-                        it[Characters.marvelId] = characterDBData.marvelId
-                        it[Characters.name] = characterDBData.name
+                        it[Characters.marvelId] = result.id.toString()
+                        it[Characters.name] = result.name
                         it[Characters.description] = description
                         it[Characters.lastModified] = lastModified
                     }
 
-                    logger.info("Successfully saved new character: ${characterDBData.name} with Marvel ID: ${characterDBData.marvelId}")
-                    characters.add(characterDBData)
+                    logger.info("Successfully saved new character: ${result.name} with Marvel ID: ${result.id}")
                 } else {
-                    logger.info("Character with name: ${characterDBData.name} already exists, skipping.")
+                    logger.info("Character with name: ${result.name} already exists, skipping.")
                 }
             }
         }
+    }
 
-        return characters
+    /**
+     * Formats MarvelCharacter instances into CharacterDBData.
+     * @param results List of MarvelCharacter to be formatted.
+     * @return List of CharacterDBData.
+     */
+    private fun formatCharacters(results: List<MarvelCharacter>): List<CharacterDBData> {
+        return results.map { result ->
+            val description = result.description ?: ""
+            val lastModified = result.modified.toInstant()
+
+            logger.info("Formatted character: ${result.name}, Last Modified: $lastModified")
+
+            CharacterDBData(
+                marvelId = result.id.toString(),
+                name = result.name,
+                description = description,
+                lastModified = result.modified,
+            )
+        }
     }
 
     private fun pagination(
