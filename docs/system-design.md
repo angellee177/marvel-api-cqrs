@@ -33,7 +33,7 @@ Main focus of this APIs is to fetch data from Marvel API, where this API should 
    - Ensure low latency and high cache efficiency, 
    - Database indexing by create table specialize for read, this solution Optimized for reading, main table won't be impacted by indexing. However, might need more larger storage
    - Use rate-limiting to prevent abuse and ensure fair resource allocation.
-   3. **Maintainability:** 
+3. **Maintainability:** 
    - Provide clear logs, metrics, and modular design.
    - Write code by following coding practice to ensure readability, and maintanability.
    - Adopt a modular design to ensure code reusability and ease of future enhancements.
@@ -56,13 +56,11 @@ Main focus of this APIs is to fetch data from Marvel API, where this API should 
 
 
 ### GET
-| Endpoint Name	| Params |
-|---------------|---------|
-| /v1/users/my-profile | JWT Auth token |
+| Endpoint Name	| Params                                                         |
+|---------------|----------------------------------------------------------------|
+| /v1/users/my-profile | JWT Auth token                                                 |
 | /v1/characters/params	| query (search term, e.g., /v1/characters/params?name=Iron Man) |
-| /v1/characters/{id}	| character_id, e.g., /v1/characters/1 |
-| /v1/characters/list	| limit, offset |
-| /v1/characters/updates	| query (real-time updates) | 
+| /v1/characters/	| name, nameStartsWith, modifiedSince, limit, offset             |
 
 ---
 
@@ -97,14 +95,10 @@ Main focus of this APIs is to fetch data from Marvel API, where this API should 
 | **created_at**    | `Timestamp`                 | Timestamp when the character was created.              |
 | **updated_at**    | `Timestamp`                 | Timestamp when the character was last updated.         |
 
-
-    name VARCHAR(255), -- Character name
-    name_start_with VARCHAR(255), -- Filter for name starting with
-    modified_since DATETIME, -- Timestamp for last modification
 | Cache Table    | Type                        | Description                                |
 |----------------|-----------------------------|--------------------------------------------|
 | **id**         | `UUID PRIMARY KEY NOT NULL` | Unique identifier for the cache entry.     |
-| **query**      | `VARCHAR`                   | Query with params Character name           |
+| **cacheKey**   | `VARCHAR`                   | Query with params Character name           |
 | **characters** | `JSONB`                     | Cached character data in JSON format.      |
 | **created_at** | `Timestamp`                 | Timestamp when the cache entry was created. |
 | **updated_at** | `Timestamp`                 | Timestamp when the cache entry was last updated. |
@@ -126,6 +120,11 @@ The **cache table** stores the character data in a `jsonb` format to be easily r
 
 ## E. Deep Dive
 For this system, there is 2 problem we can deep dive on.
+
+### Estimate:
+1. Daily Active User 100,000 users
+2. Proximity Search 5 queries per user * 100,000 users = 500,000 queries/day
+3. Read Per second 500,000 read per day / (24 hours * 3600 seconds) = 5,78 reads/seconds
 ---
 
 ### I. Caching
