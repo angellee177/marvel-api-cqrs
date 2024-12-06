@@ -37,3 +37,5 @@ out/
 
 # ignore application configuration
 application.conf
+
+.DS_Store
