@@ -15,16 +15,18 @@ object DatabaseFactory {
     private val dbUrl = appConfig.property("db.jdbcUrl").getString()
     private val dbUser = appConfig.property("db.dbUser").getString()
     private val dbPassword = appConfig.property("db.dbPassword").getString()
+    private val driverClassName = appConfig.property("db.driverClassName").getString()
 
-    fun init() {
+    fun init(testMigrationPath: String? = null) {
         try {
             DB.connect(hikari())
+            val migrationPath = testMigrationPath ?: "classpath:db/migration"
             val flyway = Flyway.configure()
                 .dataSource(dbUrl, dbUser, dbPassword)
-                .locations("classpath:db/migration")
-                .loggers("console")
+                .locations(migrationPath)
+                .loggers("slf4j") // Ensure SLF4J is used for logging
                 .load()
-            flyway.migrate() // This will apply any pending migrations
+            flyway.migrate()
             println("Database migrations applied successfully.")
         } catch (e: Exception) {
             println("Failed to initialize the database: ${e.message}")
@@ -33,7 +35,7 @@ object DatabaseFactory {
 
     private fun hikari(): HikariDataSource {
         val config = HikariConfig()
-        config.driverClassName = "org.postgresql.Driver"
+        config.driverClassName = driverClassName
         config.jdbcUrl = dbUrl
         config.username = dbUser
         config.password = dbPassword
