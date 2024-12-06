@@ -7,7 +7,7 @@
 	},
 	"item": [
 		{
-			"name": "Users",
+			"name": "users",
 			"protocolProfileBehavior": {
 				"disabledSystemHeaders": {
 					"accept": true
@@ -19,7 +19,7 @@
 					"bearer": [
 						{
 							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwOi8vMC4wLjAuMDo4MDgwLyIsImVtYWlsIjoiYW5nZWxAdGVzdC5jb20iLCJleHAiOjE3MzMxNTg1MjV9.2AsbpN5jS4bH70l1Wrye-ExG8xgBPQbyRp8fOeBw3zc",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwOi8vMC4wLjAuMDo4MDgwLyIsImVtYWlsIjoiYW5nZWxAdGVzdC5jb20iLCJleHAiOjE3MzMyMzkwNjN9.Xi8Hs9R6EuQuZsm8yXkrd0E9x5WtURaQ3Ld1Pa-vI9s",
 							"type": "string"
 						}
 					]
@@ -140,7 +140,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"email\": \"angel@test.com\",\n    \"password\": \"angel@17\"\n}",
+					"raw": "{\n    \"name\": \"angem\",\n    \"email\": \"angel@test.com\",\n    \"password\": \"angel@17\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -342,7 +342,7 @@
 					"bearer": [
 						{
 							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwOi8vMC4wLjAuMDo4MDgwLyIsImVtYWlsIjoiYW5nZWxAdGVzdC5jb20iLCJleHAiOjE3MzMxNTg1MjV9.2AsbpN5jS4bH70l1Wrye-ExG8xgBPQbyRp8fOeBw3zc",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwOi8vMC4wLjAuMDo4MDgwLyIsImVtYWlsIjoiYW5nZWxAdGVzdC5jb20iLCJleHAiOjE3MzMzODk0Mzl9.W5y0pQdZbS3WHRIIrDAlcQjxogenz7F982ix2EjP_VI",
 							"type": "string"
 						}
 					]
