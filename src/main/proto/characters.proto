@@ -16,7 +16,11 @@ message FetchCharactersRequest {
   // Optional filters
   string name = 1;
   string nameStartsWith = 2;
-  string modifiedSince = 3; // String format, e.g., "2024-12-05T00:00:00Z"
+  // 'modifiedSince' should be in one of the following formats:
+  // 1. Full timestamp with timezone: "yyyy-MM-dd'T'HH:mm:ssZ" (e.g., "2024-12-06T15:30:00+0000")
+  // 2. Date-only format: "yyyy-MM-dd" (e.g., "2024-12-06")
+  // If not provided, the default behavior will be to fetch all records.
+  string modifiedSince = 3;
   int32 offset = 4; // Default 0
   int32 limit = 5;  // Default 5
 }
