@@ -11,10 +11,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.time.Instant
 
 class CharacterService(
     private val cacheService: CacheService,
@@ -25,6 +26,8 @@ class CharacterService(
     suspend fun fetchCharacters(
         queryParams: Map<String, String>,
     ): List<CharacterDBData> = withContext(Dispatchers.IO) {
+        logger.info("Fetching Characters is starting")
+
         val cacheKey = cacheService.generateCacheKey(queryParams)
 
         try {
@@ -33,8 +36,9 @@ class CharacterService(
             val offset = queryParams["offset"]?.toIntOrNull() ?: 0
 
             // Check cache first
+            logger.info("Checking from cache")
             val cachedData: List<CharacterDBData> = cacheService.fetchMatchingCacheEntries(queryParams)
-            if (!cachedData.isNullOrEmpty()) {
+            if (cachedData.isNotEmpty()) {
                 logger.info("Returning cached data for query key: $cacheKey")
 
                 // return the cache data
@@ -45,7 +49,7 @@ class CharacterService(
             logger.info("Cache miss. Fetching fresh data for query key: $cacheKey")
             val freshData: MarvelData = marvelApiClient.fetchCharacters(queryParams)
 
-            if (freshData.total == 0) {
+            if (freshData.count == 0) {
                 logger.info("No characters found for query key: $cacheKey")
                 return@withContext emptyList()
             }
@@ -59,8 +63,6 @@ class CharacterService(
                     cacheService.cacheCharacterData(cacheKey, characters)
                 }
             }
-
-            cacheService.cacheCharacterData(cacheKey, characters)
 
             logger.info("Successfully fetched and cached data for query key: $cacheKey")
 
@@ -77,31 +79,49 @@ class CharacterService(
      */
     private fun processAndSaveCharactersInBatches(
         results: List<MarvelCharacter>,
-        batchSize: Int = 100
     ): List<CharacterDBData> {
         val characters = mutableListOf<CharacterDBData>()
 
-        results.chunked(batchSize).forEach { batch ->
-            // Insert characters in batch and map them to CharacterDBData
-            val batchCharacters = batch.map { result ->
+        transaction {
+            // Process the results one by one
+            results.forEach { result ->
                 val description = result.description ?: ""
                 val lastModified = result.modified.toInstant()
 
-                CharacterDBData(
+                // Create CharacterDBData instance
+                val characterDBData = CharacterDBData(
                     marvelId = result.id.toString(),
                     name = result.name,
                     description = description,
-                    lastModified = lastModified,
-                ).also {
-                    insertNewCharacter(
-                        marvelId = it.marvelId,
-                        name = it.name,
-                        description = it.description,
-                        lastModified = lastModified
-                    )
+                    lastModified = result.modified,
+                )
+
+                logger.info("Checking if character with name: ${characterDBData.name} exists.")
+
+                // Check if the character already exists based on the unique 'name'
+                val existingCharacter = Characters
+                    .selectAll()
+                    .where { Characters.name eq  characterDBData.name }
+                    .singleOrNull()
+
+                // If the character does not exist, insert it
+                if (existingCharacter == null) {
+                    logger.info("Saving new character: ${characterDBData.name} with Marvel ID: ${characterDBData.marvelId}")
+
+                    // Insert a single character at a time
+                    Characters.insert {
+                        it[Characters.marvelId] = characterDBData.marvelId
+                        it[Characters.name] = characterDBData.name
+                        it[Characters.description] = description
+                        it[Characters.lastModified] = lastModified
+                    }
+
+                    logger.info("Successfully saved new character: ${characterDBData.name} with Marvel ID: ${characterDBData.marvelId}")
+                    characters.add(characterDBData)
+                } else {
+                    logger.info("Character with name: ${characterDBData.name} already exists, skipping.")
                 }
             }
-            characters.addAll(batchCharacters)
         }
 
         return characters
@@ -112,40 +132,8 @@ class CharacterService(
         limit: Int = 5,
         offset: Int = 0,
     ): List<CharacterDBData> {
-        // Calculate the start and end indices for pagination
         val startIndex = offset
         val endIndex = (offset + limit).coerceAtMost(data.size)
-
-        // Return a sublist based on pagination
-        return if (startIndex in data.indices) {
-            data.subList(startIndex, endIndex)
-        } else {
-            emptyList()
-        }
-    }
-
-
-    /**
-     * Inserts a new character into the database.
-     */
-    private fun insertNewCharacter(
-        marvelId: String,
-        name: String,
-        description: String,
-        lastModified: Instant,
-    ) {
-        logger.info("Saving new Marvel characters in batch")
-        Characters.batchInsert(listOf(mapOf(
-            Characters.marvelId to marvelId,
-            Characters.name to name,
-            Characters.description to description,
-            Characters.lastModified to lastModified
-        ))) { data ->
-            this[Characters.marvelId] = data[Characters.marvelId] as String
-            this[Characters.name] = data[Characters.name] as String
-            this[Characters.description] = data[Characters.description] as String
-            this[Characters.lastModified] = data[Characters.lastModified] as Instant
-        }
-        logger.info("Successfully saved Marvel characters")
+        return if (startIndex < data.size) data.subList(startIndex, endIndex) else emptyList()
     }
 }
