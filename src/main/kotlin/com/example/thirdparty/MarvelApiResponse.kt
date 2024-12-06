@@ -10,7 +10,7 @@ data class MarvelApiResponse(
 @Serializable
 data class MarvelData(
     val limit: Int,
-    val total: Int,
+    val count: Int,
     val results: List<MarvelCharacter>
 )
 

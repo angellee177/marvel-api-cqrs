@@ -13,6 +13,7 @@ class MarvelApiClientTest {
     fun `can fetch data from marvel APIs`() = runTest {
         val apiResponse = MarvelApiClient().fetchCharacters()
 
+        apiResponse.count should be(5)
         apiResponse.results.first().shouldBeTypeOf<MarvelCharacter>()
     }
 
@@ -24,7 +25,7 @@ class MarvelApiClientTest {
 
         val apiResponse = MarvelApiClient().fetchCharacters(queryParams)
 
-        apiResponse.total should be(1)
+        apiResponse.count should be(1)
         apiResponse.results.first().name shouldBe "Hulk"
     }
 }

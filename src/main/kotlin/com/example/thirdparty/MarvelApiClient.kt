@@ -54,7 +54,14 @@ class MarvelApiClient {
                     val ts = System.currentTimeMillis().toString()
                     val hash = generateHash(ts, privateApiKey, apiKey)
 
-                    val url = buildUrl(queryParams ?: emptyMap(), ts, hash)
+                    // If queryParams is null, start with an empty map
+                    val filteredQueryParams = queryParams?.filter { it.value?.isNotEmpty() == true } ?: emptyMap()
+
+                    // Add default limit and offset if not already present in queryParams
+                    val defaultParams = mapOf("limit" to "5", "offset" to "0")
+                    val finalQueryParams = filteredQueryParams + defaultParams.filter { it.key !in filteredQueryParams }
+
+                    val url = buildUrl(finalQueryParams, ts, hash)
                     val response = client.get(url)
 
                     logger.debug("Fetching characters from Marvel API. URL: $url")
@@ -90,14 +97,14 @@ class MarvelApiClient {
     private fun transformToMarvelData(apiResponse: MarvelApiResponse): MarvelData {
         val data = apiResponse.data
 
-        if (data.total == 0 && data.results.isEmpty()) {
+        if (data.count == 0 && data.results.isEmpty()) {
             logger.warn("No characters found in the API response.")
             return emptyMarvelData
         }
 
         return MarvelData(
             limit = data.limit ?: 0,
-            total = data.total ?: 0,
+            count = data.count ?: 0,
             results = data.results.map { marvelCharacter ->
                 MarvelCharacter(
                     id = marvelCharacter.id,
@@ -152,7 +159,7 @@ class MarvelApiClient {
 
     val emptyMarvelData = MarvelData(
         limit = 0,
-        total = 0,
+        count = 0,
         results = emptyList(),
     )
 }
