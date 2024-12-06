@@ -39,3 +39,5 @@ out/
 application.conf
 
 .DS_Store
+
+.kotlin/sessions
