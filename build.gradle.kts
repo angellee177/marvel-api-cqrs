@@ -67,6 +67,8 @@ dependencies {
     implementation(Libraries.coroutineTest)
     implementation(Libraries.jUnit)
     implementation(Libraries.jUnitEngine)
+    implementation(Libraries.testingDBH2)
+    implementation(Libraries.mockito)
 
     // Protocol Buffers
     implementation(Libraries.protoBufKotlin)
@@ -101,6 +103,8 @@ object Versions {
     const val kotest = "5.9.0"
     const val jUnit = "5.11.3"
     const val coroutineTest = "1.9.0"
+    const val h2DB = "2.3.232"
+    const val mockito = "5.14.2"
 
     // gRPC connection
     const val grpcKotlinStub = "1.4.1"
@@ -149,6 +153,7 @@ object Libraries {
     const val kotestRunner = "io.kotest:kotest-runner-junit5:${v.kotest}"
     const val kotestAssertion = "io.kotest:kotest-assertions-core:${v.kotest}"
     const val kotestProperty = "io.kotest:kotest-property:${v.kotest}"
+    const val mockito = "org.mockito:mockito-junit-jupiter:${v.mockito}"
 
     // Coroutine Test dependencies
     const val coroutineTest = "org.jetbrains.kotlinx:kotlinx-coroutines-test:${v.coroutineTest}"
@@ -156,6 +161,7 @@ object Libraries {
     // Other necessary dependencies
     const val jUnit = "org.junit.jupiter:junit-jupiter-api:${v.jUnit}"
     const val jUnitEngine = "org.junit.jupiter:junit-jupiter-engine:${v.jUnit}"
+    const val testingDBH2 = "com.h2database:h2:${v.h2DB}"
 }
 
 protobuf {
