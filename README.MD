@@ -45,25 +45,6 @@ The following instructions cover the setup for local development:
 
 This command will start the application in development mode.
 
-## Running Tests
-
-You can run tests to ensure the application is functioning as expected.
-
-#### Unit Tests
-```
-./gradlew test
-```
-
-This will execute the unit tests for the project.
-
-#### Test Coverage
-
-To run the tests and generate a coverage report, you can use:
-```
-./gradlew jacocoTestReport
-```
-This will generate a test coverage report in build/reports/jacoco/test/html/index.html.
-
 ## Documentation
 ### Postman
 **Steps to Import Postman Collection**:
