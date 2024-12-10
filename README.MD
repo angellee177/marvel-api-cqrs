@@ -12,7 +12,7 @@ Please check [here](./docs/system-design.md) to see more details about the APIs 
 
 ### step 1: Install dependencies
 Before you can start the project, ensure all dependencies are installed:
-```
+``` bash
 ./gradlew build
 ```
 
@@ -26,7 +26,7 @@ Check the [application.conf.example](./src/main/resources/application.conf.examp
 ### Step 3: Running Migrations
 
 The project uses Exposed for database migrations. To create the necessary tables, run the following command:
-```
+``` bash
 flyway -locations=filesystem:src/main/resources/db/migration -url=jdbc:postgresql://localhost:5433/your_db_name -user=your_user_name -password=your_db_password migrate
 ```
 This will apply all pending migrations to your database, you can check the migration file at [here](./src/main/resources/db/migration)
@@ -39,11 +39,22 @@ The following instructions cover the setup for local development:
    To run the project locally, use the following commands:
 
 #### Development Mode
-```
+``` bash
 ./gradlew run
 ```
 
 This command will start the application in development mode.
+
+## Running Tests
+
+You can run tests to ensure the application is functioning as expected.
+
+#### Unit Tests
+``` bash
+./gradlew test
+```
+
+This will execute the unit tests for the project.
 
 ## Documentation
 ### Postman
