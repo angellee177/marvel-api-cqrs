@@ -7,12 +7,12 @@ import com.typesafe.config.ConfigFactory
 import io.ktor.server.config.*
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.lang.IllegalStateException
 import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -108,9 +108,13 @@ class CacheServiceTest {
 
             Thread.sleep(100)
 
-            val result = cacheService.fetchMatchingCacheEntries(queryParams)
+            val result = cacheService.fetchMatchingCacheEntries(
+                cacheKey,
+                queryParams["limit"]?.toInt() ?: 5,
+                0
+            )
 
-            println(result)
+            assertEquals(characters, result)
             assertEquals(1, result.size)
             assertEquals("John", result[0].name)
         }
@@ -123,30 +127,36 @@ class CacheServiceTest {
             "limit" to "1"
         )
 
+        val cacheKey = cacheService.generateCacheKey(queryParams)
+
         transaction {
-            val result = cacheService.fetchMatchingCacheEntries(queryParams)
+            val result = cacheService.fetchMatchingCacheEntries(
+                cacheKey,
+                queryParams["limit"]?.toInt() ?: 5,
+                0
+            )
 
             assertEquals(0, result.size)
         }
     }
 
-    //    @Test
+    @Test
     fun `test cacheCharacterData stores data correctly`() {
         val cacheKey = "uniqueCacheKey"
 
         cacheService.cacheCharacterData(cacheKey, characters)
 
         // Check if data is inserted into the database
-//        transaction {
-//            val storedData = CacheCharacters
-//                .select { CacheCharacters.cacheKey eq cacheKey }
-//                .map { it[CacheCharacters.data] }
-//                .singleOrNull()
-//
-//            assertNotNull(storedData)
-//            val storedCharacters = Json.decodeFromString<List<CharacterDBData>>(storedData)
-//            assertEquals(characters, storedCharacters)
-//        }
+        transaction {
+            val storedData = CacheCharacters
+                .selectAll()
+                .where { CacheCharacters.cacheKey eq cacheKey }
+                .map { it[CacheCharacters.data] }
+                .singleOrNull()
+
+            assertNotNull(storedData)
+            assertEquals(characters, storedData)
+        }
     }
 
     @Test
@@ -160,7 +170,11 @@ class CacheServiceTest {
         transaction {
             cacheService.cacheCharacterData(cacheKey, characters)
 
-            val result = cacheService.fetchMatchingCacheEntries(queryParams)
+            val result = cacheService.fetchMatchingCacheEntries(
+                cacheKey,
+                queryParams["limit"]?.toInt() ?: 5,
+                0
+            )
 
             assertEquals(1, result.size)
         }
@@ -178,9 +192,14 @@ class CacheServiceTest {
     @Test
     fun `test fetchMatchingCacheEntries throws exception on invalid query`() {
         val queryParams = mapOf("modifiedSince" to "invalid-date")
+        val cacheKey = cacheService.generateCacheKey(queryParams)
 
-        assertThrows<IllegalStateException> {
-            cacheService.fetchMatchingCacheEntries(queryParams)
-        }
+        val result = cacheService.fetchMatchingCacheEntries(
+                cacheKey,
+                queryParams["limit"]?.toInt() ?: 5,
+                0
+            )
+
+        assertEquals(0, result.size)
     }
 }

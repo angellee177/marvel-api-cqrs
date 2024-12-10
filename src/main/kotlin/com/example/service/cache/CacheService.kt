@@ -36,16 +36,11 @@ class CacheService {
      * @param queryParams Map of query parameters to filter cache entries.
      * @return List of matching CacheEntry objects.
      */
-    fun fetchMatchingCacheEntries(queryParams: Map<String, String?>): List<CharacterDBData> {
-        logger.info("Fetching matching cache entries for query parameters: $queryParams")
-
-        // Parse limit and offset from queryParams
-        val limit = queryParams["limit"]?.toIntOrNull() ?: 5
-        val offset = queryParams["offset"]?.toIntOrNull() ?: 0
+    fun fetchMatchingCacheEntries(cacheKey: String, limit: Int, offset: Int): List<CharacterDBData> {
+        logger.info("Fetching matching cache entries for query parameters: $cacheKey")
 
         // Build SQL conditions
-        val conditions = buildConditions(queryParams)
-        logger.info("Successfully built conditions: $conditions")
+        logger.info("Successfully built conditions: $cacheKey")
 
         return try {
             // Execute the query inside a transaction
@@ -53,7 +48,7 @@ class CacheService {
                 CacheCharacters
                     .select(CacheCharacters.data) // Select only the 'data' column
                     .where {
-                        conditions and
+                        (CacheCharacters.cacheKey eq cacheKey) and
                                 (CacheCharacters.expiresAt greaterEq Instant.now()) // Check for expiration
                     }
                     .orderBy(CacheCharacters.updatedAt, SortOrder.DESC)
@@ -68,57 +63,6 @@ class CacheService {
             logger.error("Error fetching matching cache entries: ${e.message}", e)
             throw e // Rethrow the exception
         }
-    }
-
-    /**
-     * Build SQL conditions dynamically based on query parameters.
-     */
-    private fun buildConditions(queryParams: Map<String, String?>): Op<Boolean> {
-        var conditions: Op<Boolean> = Op.TRUE
-
-        queryParams.forEach { (key, value) ->
-            if (!value.isNullOrEmpty()) {
-                when (key) {
-                    "name" -> {
-                        conditions = conditions and (CacheCharacters.cacheKey like "%name=$value%")
-                    }
-                    "nameStartsWith" -> {
-                        conditions = conditions and (CacheCharacters.cacheKey like "%name=$value%")
-                    }
-                    "modifiedSince" -> {
-                        // Handle the JSON array in the 'data' column
-                        val jsonCondition = object : Op<Boolean>() {
-                            override fun toQueryBuilder(queryBuilder: QueryBuilder) {
-                                queryBuilder.append(
-                                    "EXISTS (SELECT 1 FROM jsonb_array_elements(",
-                                    CacheCharacters.data,
-                                    ") AS item WHERE item->>'lastModified' >= ",
-                                    QueryParameter(value, TextColumnType()),
-                                    ")"
-                                )
-                            }
-                        }
-//                        val jsonCondition = CustomFunction(
-//                            functionName = "EXISTS",
-//                            columnType = BooleanColumnType(),
-//                            LiteralOp(TextColumnType(), """
-//                                SELECT 1 FROM jsonb_array_elements(${CacheCharacters.data.name}) AS item WHERE item->>'lastModified' >= '$value'
-//                                """.trimIndent()
-//                            )
-//                        )
-                        conditions = conditions and jsonCondition
-                    }
-                    "limit" -> {
-                        conditions = conditions and (CacheCharacters.cacheKey like "%limit=$value%")
-                    }
-                    "offset" -> {
-                        conditions = conditions and (CacheCharacters.cacheKey like "%offset=$value%")
-                    }
-                }
-            }
-        }
-
-        return conditions
     }
 
     /**
