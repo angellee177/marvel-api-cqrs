@@ -2,6 +2,7 @@ package com.example.grpc
 
 import com.example.service.userProfile.ProfileService
 import com.example.utils.JWT
+import com.example.utils.verifyToken
 import io.grpc.Status
 import io.grpc.stub.StreamObserver
 import kotlinx.coroutines.CoroutineScope
@@ -24,25 +25,8 @@ class UserServiceImpl(
         request: GetAllUsersRequest,
         responseObserver: StreamObserver<UserList>
     ) {
-        // Validate token using your JWT utility
-        if (request.token.isEmpty()) {
-            logger.error("Missing token.")
-
-            responseObserver.onError(
-                Status.UNAUTHENTICATED.withDescription("Missing token").asRuntimeException()
-            )
-            return
-        }
-
-        val email = JWT.verifyTokenAndGetEmail(request.token)
-        if (email == null) {
-            logger.error("Invalid token, email is null")
-
-            responseObserver.onError(
-                Status.UNAUTHENTICATED.withDescription("Invalid token").asRuntimeException()
-            )
-            return
-        }
+        // Verify the token using TokenUtils
+        verifyToken(request.token, logger)
 
         // Launch a coroutine for the suspend function call
         CoroutineScope(Dispatchers.IO).launch {

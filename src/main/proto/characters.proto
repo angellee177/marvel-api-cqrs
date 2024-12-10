@@ -13,16 +13,17 @@ service CharacterService {
 
 // Request for fetching characters
 message FetchCharactersRequest {
+  string token = 1;  // Add token to the request
   // Optional filters
-  string name = 1;
-  string nameStartsWith = 2;
+  string name = 2;
+  string nameStartsWith = 3;
   // 'modifiedSince' should be in one of the following formats:
   // 1. Full timestamp with timezone: "yyyy-MM-dd'T'HH:mm:ssZ" (e.g., "2024-12-06T15:30:00+0000")
   // 2. Date-only format: "yyyy-MM-dd" (e.g., "2024-12-06")
   // If not provided, the default behavior will be to fetch all records.
-  string modifiedSince = 3;
-  int32 offset = 4; // Default 0
-  int32 limit = 5;  // Default 5
+  string modifiedSince =43;
+  int32 offset = 5; // Default 0
+  int32 limit = 6;  // Default 5
 }
 
 // Individual character data
