@@ -66,7 +66,13 @@ class CharacterServiceTest {
             CharacterDBData("1", "John", "Cached description", "2024-09-24T11:11:31-0400")
         )
 
-        Mockito.`when`(cacheService.fetchMatchingCacheEntries(queryParams)).thenReturn(cachedData)
+        val cacheKey = cacheService.generateCacheKey(queryParams)
+
+        Mockito.`when`(cacheService.fetchMatchingCacheEntries(
+            cacheKey,
+            5,
+            0,
+        )).thenReturn(cachedData)
 
         val result = characterService.fetchCharacters(queryParams)
 
@@ -83,7 +89,13 @@ class CharacterServiceTest {
             limit = 1,
         )
 
-        Mockito.`when`(cacheService.fetchMatchingCacheEntries(queryParams)).thenReturn(emptyList())
+        val cacheKey = cacheService.generateCacheKey(queryParams)
+
+        Mockito.`when`(cacheService.fetchMatchingCacheEntries(
+            cacheKey,
+            1,
+            0,
+        )).thenReturn(emptyList())
         Mockito.`when`(marvelApiClient.fetchCharacters(queryParams)).thenReturn(apiResponse)
 
         val result = characterService.fetchCharacters(queryParams)
@@ -101,7 +113,13 @@ class CharacterServiceTest {
             limit = 1,
         )
 
-        Mockito.`when`(cacheService.fetchMatchingCacheEntries(queryParams)).thenReturn(emptyList())
+        val cacheKey = cacheService.generateCacheKey(queryParams)
+
+        Mockito.`when`(cacheService.fetchMatchingCacheEntries(
+            cacheKey,
+            1,
+            0,
+        )).thenReturn(emptyList())
         Mockito.`when`(marvelApiClient.fetchCharacters(queryParams)).thenReturn(apiResponse)
 
         characterService.fetchCharacters(queryParams)
@@ -116,6 +134,9 @@ class CharacterServiceTest {
     @Test
     fun `test fetchCharacters caches fetched data`() = runBlocking {
         val queryParams = mapOf("name" to "John")
+
+        val cacheKey = cacheService.generateCacheKey(queryParams)
+
         val apiResponse = MarvelData(
             count = 1,
             results = mockCharacters,
@@ -123,7 +144,11 @@ class CharacterServiceTest {
         )
         Mockito.`when`(cacheService.generateCacheKey(queryParams)).thenReturn("name=John")
 
-        Mockito.`when`(cacheService.fetchMatchingCacheEntries(queryParams)).thenReturn(emptyList())
+        Mockito.`when`(cacheService.fetchMatchingCacheEntries(
+            cacheKey,
+            1,
+            0,
+        )).thenReturn(emptyList())
         Mockito.`when`(marvelApiClient.fetchCharacters(queryParams)).thenReturn(apiResponse)
 
         characterService.fetchCharacters(queryParams)

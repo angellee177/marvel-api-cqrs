@@ -39,8 +39,11 @@ class CharacterService(
             // Check cache first
             logger.info("Checking from cache")
             val cachedData: List<CharacterDBData> = transaction {
-                cacheService.fetchMatchingCacheEntries(queryParams)
+                cacheService.fetchMatchingCacheEntries(cacheKey, limit, offset)
             }
+
+            logger.info("cache data are found: $cachedData")
+
             if (cachedData.isNotEmpty()) {
                 logger.info("Returning cached data for query key: $cacheKey")
                 return@withContext pagination(cachedData, limit, offset)
